@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 #include <windows.h>
 #include <tchar.h>
 #include "nvapi.h"
@@ -21,18 +23,71 @@ int main(int argc, char* argv[]) {
     // Usage: writeValueToMonitor.exe [display_index] [input_value] [command_code]
     // Uses default register addres 0x51 used for VCP codes
     if (argc == 4) {
-        display_index = atoi(argv[1]);
-        input_value = (BYTE)strtol(argv[2], NULL, 16);
-        command_code = (BYTE)strtol(argv[3], NULL, 16);
+        char* endptr;
+        long val;
+        
+        errno = 0;
+        val = strtol(argv[1], &endptr, 10);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > INT_MAX) {
+            printf("Invalid display_index: %s\n", argv[1]);
+            return 1;
+        }
+        display_index = (int)val;
+        
+        errno = 0;
+        val = strtol(argv[2], &endptr, 16);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
+            printf("Invalid input_value: %s (must be 0x00-0xFF)\n", argv[2]);
+            return 1;
+        }
+        input_value = (BYTE)val;
+        
+        errno = 0;
+        val = strtol(argv[3], &endptr, 16);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
+            printf("Invalid command_code: %s (must be 0x00-0xFF)\n", argv[3]);
+            return 1;
+        }
+        command_code = (BYTE)val;
     }
 
     // Usage: writeValueToMonitor.exe [display_index] [input_value] [command_code] [register_address]
     // Uses default register addres 0x51 used for VCP codes
     else if (argc == 5) {
-        display_index = atoi(argv[1]);
-        input_value = (BYTE)strtol(argv[2], NULL, 16);
-        command_code = (BYTE)strtol(argv[3], NULL, 16);
-        register_address = (BYTE)strtol(argv[4], NULL, 16);
+        char* endptr;
+        long val;
+        
+        errno = 0;
+        val = strtol(argv[1], &endptr, 10);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > INT_MAX) {
+            printf("Invalid display_index: %s\n", argv[1]);
+            return 1;
+        }
+        display_index = (int)val;
+        
+        errno = 0;
+        val = strtol(argv[2], &endptr, 16);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
+            printf("Invalid input_value: %s (must be 0x00-0xFF)\n", argv[2]);
+            return 1;
+        }
+        input_value = (BYTE)val;
+        
+        errno = 0;
+        val = strtol(argv[3], &endptr, 16);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
+            printf("Invalid command_code: %s (must be 0x00-0xFF)\n", argv[3]);
+            return 1;
+        }
+        command_code = (BYTE)val;
+        
+        errno = 0;
+        val = strtol(argv[4], &endptr, 16);
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
+            printf("Invalid register_address: %s (must be 0x00-0xFF)\n", argv[4]);
+            return 1;
+        }
+        register_address = (BYTE)val;
     }
     else {
         printf("Incorrect Number of arguments!\n\n");
@@ -66,16 +121,29 @@ int main(int argc, char* argv[]) {
     //
     // Enumerate display handles
     //
+    const unsigned int maxDisplays = NVAPI_MAX_PHYSICAL_GPUS * NVAPI_MAX_DISPLAY_HEADS;
     NvDisplayHandle hDisplay_a[NVAPI_MAX_PHYSICAL_GPUS * NVAPI_MAX_DISPLAY_HEADS] = { 0 };
-    for (unsigned int i = 0; nvapiStatus == NVAPI_OK; i++)
+    unsigned int displayCount = 0;
+    
+    for (unsigned int i = 0; nvapiStatus == NVAPI_OK && i < maxDisplays; i++)
     {
         nvapiStatus = NvAPI_EnumNvidiaDisplayHandle(i, &hDisplay_a[i]);
         
-        if (nvapiStatus != NVAPI_OK && nvapiStatus != NVAPI_END_ENUMERATION)
+        if (nvapiStatus == NVAPI_OK)
+        {
+            displayCount++;
+        }
+        else if (nvapiStatus != NVAPI_END_ENUMERATION)
         {
             printf("NvAPI_EnumNvidiaDisplayHandle() failed with status %d\n", nvapiStatus);
             return 1;
         }
+    }
+    
+    if (display_index < 0 || (unsigned int)display_index >= displayCount)
+    {
+        printf("Invalid display_index: %d (valid range: 0-%u)\n", display_index, displayCount > 0 ? displayCount - 1 : 0);
+        return 1;
     }
 
    
@@ -111,7 +179,7 @@ int main(int argc, char* argv[]) {
 
 
 // This function calculates the (XOR) checksum of the I2C register
-void CalculateI2cChecksum(const NV_I2C_INFO& i2cInfo)
+void CalculateI2cChecksum(NV_I2C_INFO& i2cInfo)
 {
     // Calculate the i2c packet checksum and place the 
     // value into the packet
