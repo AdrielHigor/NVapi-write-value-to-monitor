@@ -9,6 +9,31 @@
 #include "nvapi.h"
 #include "targetver.h"
 
+#define PARSE_HEX_BYTE(arg, var, name) \
+    do { \
+        char* endptr; \
+        long val; \
+        errno = 0; \
+        val = strtol(arg, &endptr, 16); \
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) { \
+            printf("Invalid " name ": %s (must be 0x00-0xFF)\n", arg); \
+            return 1; \
+        } \
+        var = (BYTE)val; \
+    } while(0)
+
+#define PARSE_DECIMAL_INT(arg, var, name) \
+    do { \
+        char* endptr; \
+        long val; \
+        errno = 0; \
+        val = strtol(arg, &endptr, 10); \
+        if (errno != 0 || *endptr != '\0' || val < 0 || val > INT_MAX) { \
+            printf("Invalid " name ": %s\n", arg); \
+            return 1; \
+        } \
+        var = (int)val; \
+    } while(0)
 
 BOOL WriteValueToMonitor(NvPhysicalGpuHandle hPhysicalGpu, NvU32 displayId, BYTE input_value, BYTE command_code, BYTE register_address);
 
@@ -23,71 +48,18 @@ int main(int argc, char* argv[]) {
     // Usage: writeValueToMonitor.exe [display_index] [input_value] [command_code]
     // Uses default register addres 0x51 used for VCP codes
     if (argc == 4) {
-        char* endptr;
-        long val;
-        
-        errno = 0;
-        val = strtol(argv[1], &endptr, 10);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > INT_MAX) {
-            printf("Invalid display_index: %s\n", argv[1]);
-            return 1;
-        }
-        display_index = (int)val;
-        
-        errno = 0;
-        val = strtol(argv[2], &endptr, 16);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
-            printf("Invalid input_value: %s (must be 0x00-0xFF)\n", argv[2]);
-            return 1;
-        }
-        input_value = (BYTE)val;
-        
-        errno = 0;
-        val = strtol(argv[3], &endptr, 16);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
-            printf("Invalid command_code: %s (must be 0x00-0xFF)\n", argv[3]);
-            return 1;
-        }
-        command_code = (BYTE)val;
+        PARSE_DECIMAL_INT(argv[1], display_index, "display_index");
+        PARSE_HEX_BYTE(argv[2], input_value, "input_value");
+        PARSE_HEX_BYTE(argv[3], command_code, "command_code");
     }
 
     // Usage: writeValueToMonitor.exe [display_index] [input_value] [command_code] [register_address]
     // Uses default register addres 0x51 used for VCP codes
     else if (argc == 5) {
-        char* endptr;
-        long val;
-        
-        errno = 0;
-        val = strtol(argv[1], &endptr, 10);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > INT_MAX) {
-            printf("Invalid display_index: %s\n", argv[1]);
-            return 1;
-        }
-        display_index = (int)val;
-        
-        errno = 0;
-        val = strtol(argv[2], &endptr, 16);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
-            printf("Invalid input_value: %s (must be 0x00-0xFF)\n", argv[2]);
-            return 1;
-        }
-        input_value = (BYTE)val;
-        
-        errno = 0;
-        val = strtol(argv[3], &endptr, 16);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
-            printf("Invalid command_code: %s (must be 0x00-0xFF)\n", argv[3]);
-            return 1;
-        }
-        command_code = (BYTE)val;
-        
-        errno = 0;
-        val = strtol(argv[4], &endptr, 16);
-        if (errno != 0 || *endptr != '\0' || val < 0 || val > 255) {
-            printf("Invalid register_address: %s (must be 0x00-0xFF)\n", argv[4]);
-            return 1;
-        }
-        register_address = (BYTE)val;
+        PARSE_DECIMAL_INT(argv[1], display_index, "display_index");
+        PARSE_HEX_BYTE(argv[2], input_value, "input_value");
+        PARSE_HEX_BYTE(argv[3], command_code, "command_code");
+        PARSE_HEX_BYTE(argv[4], register_address, "register_address");
     }
     else {
         printf("Incorrect Number of arguments!\n\n");
