@@ -96,3 +96,5 @@ $RECYCLE.BIN/
 # Logs
 *.log
 
+nvapi/
+writeValueToDisplay.exe
